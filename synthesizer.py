@@ -6,9 +6,11 @@ from librosa import effects
 from models import create_model
 from text import text_to_sequence
 from util import audio
+from hparams import hparams, hparams_debug_string
 
 
 class Synthesizer:
+
   def load(self, checkpoint_path, model_name='tacotron'):
     print('Constructing model: %s' % model_name)
     inputs = tf.placeholder(tf.int32, [1, None], 'inputs')
@@ -23,7 +25,6 @@ class Synthesizer:
     self.session.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
     saver.restore(self.session, checkpoint_path)
-
 
   def synthesize(self, text):
     cleaner_names = [x.strip() for x in hparams.cleaners.split(',')]

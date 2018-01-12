@@ -27,7 +27,6 @@ def get_output_base_path(checkpoint_path):
 
 
 def run_eval(args):
-  print(hparams_debug_string())
   synth = Synthesizer()
   synth.load(args.checkpoint)
   base_path = get_output_base_path(args.checkpoint)

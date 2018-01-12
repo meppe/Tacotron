@@ -9,7 +9,7 @@ from .rnn_wrappers import DecoderPrenetWrapper, ConcatOutputAndAttentionWrapper
 
 
 
-class Tacotron():
+class Wav2WavTacotron():
   def __init__(self, hparams):
     self._hparams = hparams
 
@@ -37,13 +37,17 @@ class Tacotron():
       hp = self._hparams
 
       # Embeddings
-      embedding_table = tf.get_variable(
-        'embedding', [len(symbols), 256], dtype=tf.float32,
-        initializer=tf.truncated_normal_initializer(stddev=0.5))
-      embedded_inputs = tf.nn.embedding_lookup(embedding_table, inputs)           # [N, T_in, 256]
+      # embedding_table = tf.get_variable(
+      #   'embedding', [len(symbols), 256], dtype=tf.float32,
+      #   initializer=tf.truncated_normal_initializer(stddev=0.5))
+      # embedded_inputs = tf.nn.embedding_lookup(embedding_table, inputs)           # [N, T_in, 256]
+      # embedded_inputs = inputs
 
       # Encoder
-      prenet_outputs = prenet(embedded_inputs, is_training)                       # [N, T_in, 128]
+      # n_fft = (self._hparams.num_src_freq - 1) * 2
+      # in_layer_size = n_fft
+      in_layer_size = self._hparams.num_src_freq
+      prenet_outputs = prenet(inputs, is_training, layer_sizes=[in_layer_size, 128])                       # [N, T_in, 128]
       encoder_outputs = encoder_cbhg(prenet_outputs, input_lengths, is_training)  # [N, T_in, 256]
 
       # Attention
@@ -94,7 +98,7 @@ class Tacotron():
       self.mel_targets = mel_targets
       self.linear_targets = linear_targets
       log('Initialized Tacotron model. Dimensions: ')
-      log('  embedding:               %d' % embedded_inputs.shape[-1])
+      log('  input:                   %d' % inputs.shape[-1])
       log('  prenet out:              %d' % prenet_outputs.shape[-1])
       log('  encoder out:             %d' % encoder_outputs.shape[-1])
       log('  attention out:           %d' % attention_cell.output_size)

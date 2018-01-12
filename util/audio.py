@@ -24,8 +24,8 @@ def inv_preemphasis(x):
   return signal.lfilter([1], [1, -hparams.preemphasis], x)
 
 
-def spectrogram(y):
-  D = _stft(preemphasis(y))
+def spectrogram(y, num_src_freq=None, frame_length_ms=None):
+  D = _stft(preemphasis(y), num_src_freq=num_src_freq, frame_length_ms=frame_length_ms)
   S = _amp_to_db(np.abs(D)) - hparams.ref_level_db
   return _normalize(S)
 
@@ -91,8 +91,8 @@ def _griffin_lim_tensorflow(S):
     return tf.squeeze(y, 0)
 
 
-def _stft(y):
-  n_fft, hop_length, win_length = _stft_parameters()
+def _stft(y, num_src_freq=None, frame_length_ms=None):
+  n_fft, hop_length, win_length = _stft_parameters(num_src_freq=num_src_freq, frame_length_ms=frame_length_ms)
   return librosa.stft(y=y, n_fft=n_fft, hop_length=hop_length, win_length=win_length)
 
 
@@ -111,10 +111,15 @@ def _istft_tensorflow(stfts):
   return tf.contrib.signal.inverse_stft(stfts, win_length, hop_length, n_fft)
 
 
-def _stft_parameters():
-  n_fft = (hparams.num_freq - 1) * 2
+def _stft_parameters(num_src_freq=None, frame_length_ms=None):
+  if num_src_freq is None:
+    n_fft = (hparams.num_freq - 1) * 2
+  else:
+    n_fft = (hparams.num_src_freq - 1) * 2
   hop_length = int(hparams.frame_shift_ms / 1000 * hparams.sample_rate)
-  win_length = int(hparams.frame_length_ms / 1000 * hparams.sample_rate)
+  if frame_length_ms is None:
+    frame_length_ms = hparams.frame_length_ms
+  win_length = int(frame_length_ms / 1000 * hparams.sample_rate)
   return n_fft, hop_length, win_length
 
 

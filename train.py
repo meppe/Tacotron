@@ -3,12 +3,14 @@ from datetime import datetime
 import math
 import numpy as np
 import os
+# os.environ['TF_CPP_MIN_VLOG_LEVEL']='3'
 import subprocess
 import time
 import tensorflow as tf
 import traceback
 
 from datasets.datafeeder import DataFeeder
+from datasets.wav2wav_datafeeder import Wav2WavDataFeeder
 from hparams import hparams, hparams_debug_string
 from models import create_model
 from text import sequence_to_text
@@ -46,7 +48,7 @@ def time_string():
 def train(log_dir, args):
   commit = get_git_commit() if args.git else 'None'
   checkpoint_path = os.path.join(log_dir, 'model.ckpt')
-  input_path = os.path.join(args.base_dir, args.input)
+  input_path = os.path.join(args.base_dir, os.path.join("training", os.path.join(args.dataset, 'train.txt')))
   log('Checkpoint path: %s' % checkpoint_path)
   log('Loading training data from: %s' % input_path)
   log('Using model: %s' % args.model)
@@ -55,7 +57,10 @@ def train(log_dir, args):
   # Set up DataFeeder:
   coord = tf.train.Coordinator()
   with tf.variable_scope('datafeeder') as scope:
-    feeder = DataFeeder(coord, input_path, hparams)
+    if args.dataset == 'wav2wav':
+      feeder = Wav2WavDataFeeder(coord, input_path, hparams)
+    else:
+      feeder = DataFeeder(coord, input_path, hparams)
 
   # Set up model:
   global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -115,7 +120,8 @@ def train(log_dir, args):
           audio.save_wav(waveform, os.path.join(log_dir, 'step-%d-audio.wav' % step))
           plot.plot_alignment(alignment, os.path.join(log_dir, 'step-%d-align.png' % step),
             info='%s, %s, %s, step=%d, loss=%.5f' % (args.model, commit, time_string(), step, loss))
-          log('Input: %s' % sequence_to_text(input_seq))
+          if args.model != 'wav2wav_tacotron':
+            log('Input: %s' % sequence_to_text(input_seq))
 
     except Exception as e:
       log('Exiting due to exception: %s' % e, slack=True)
@@ -125,16 +131,18 @@ def train(log_dir, args):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--base_dir', default=os.path.expanduser('~/tacotron'))
-  parser.add_argument('--input', default='training/train.txt')
-  parser.add_argument('--model', default='tacotron')
+  # parser.add_argument('--base_dir', default=os.path.expanduser('~/tacotron'))
+  parser.add_argument('--base_dir', default='/storage/data/tacotron')
+  parser.add_argument('--dataset', required=True, choices=['blizzard', 'ljspeech', 'wav2wav'])
+  # parser.add_argument('--input', default='training/train.txt')
+  parser.add_argument('--model', default='wav2wav_tacotron', choices=['tacotron', 'wav2wav_tacotron'])
   parser.add_argument('--name', help='Name of the run. Used for logging. Defaults to model name.')
   parser.add_argument('--hparams', default='',
     help='Hyperparameter overrides as a comma-separated list of name=value pairs')
   parser.add_argument('--restore_step', type=int, help='Global step to restore from checkpoint.')
   parser.add_argument('--summary_interval', type=int, default=100,
     help='Steps between running summary ops.')
-  parser.add_argument('--checkpoint_interval', type=int, default=1000,
+  parser.add_argument('--checkpoint_interval', type=int, default=500,
     help='Steps between writing checkpoints.')
   parser.add_argument('--slack_url', help='Slack webhook URL to get periodic reports.')
   parser.add_argument('--tf_log_level', type=int, default=1, help='Tensorflow C++ log level.')

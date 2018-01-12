@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .DS_Store
 run*.sh
+.idea
+*.wav
+tacotron-20170720
